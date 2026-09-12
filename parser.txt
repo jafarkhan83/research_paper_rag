@@ -1,0 +1,156 @@
+import pymupdf
+
+# Table extraction
+
+def extract_table_caption_position(page):
+	tabs = page.find_tables()
+	tables = []
+
+	for tab in tabs.tables:
+		x0, y0, x1, y1 = tab.bbox
+
+		area = pymupdf.Rect(
+			x0,
+			max(0, y0-20),
+			x1,
+			y0
+		)
+		caption = tab.page.get_text("text", clip=area).strip()
+		md = tab.to_markdown()
+
+		tables.append({
+			"caption": caption,
+			"table": md,
+			"rect": pymupdf.Rect(tab.bbox)
+		})
+	return tables
+
+
+def text_table_extraction(pdf_path, header_pct=0.10, footer_pct=0.10):
+	doc = pymupdf.open(pdf_path)
+	results = []
+
+	for page_num, page in enumerate(doc):
+		h = page.rect.height
+		header_zone = h * header_pct
+		footer_zone = h * (1 - footer_pct)
+
+		d = page.get_text("dict")
+		blocks = d["blocks"]
+        
+		removed = []
+		body = ""
+
+		tables = extract_table_caption_position(page)
+		is_added = [False] *len(tables)
+
+		for b in blocks:
+			if b.get("type") == 1:
+				continue # image, non readable text
+
+			for line in b["lines"]:
+				text = "".join(span["text"] for span in line["spans"]).strip()
+				if not text:
+					continue
+
+				# exclude table content
+				line_rect = pymupdf.Rect(line["bbox"])
+				is_table = False
+
+				for i, table in enumerate(tables):
+					if table["rect"].intersects(line_rect):
+						if not is_added[i]:
+							table = table["table"]
+							body += "\n" + "Detected\n\n" + table + "\n"
+							is_added[i] = True
+						is_table = True
+
+				if is_table: continue
+
+				y0, y1 = line["bbox"][1], line["bbox"][3]
+
+				if y1 <= header_zone or y0 >= footer_zone:
+					removed.append(text)
+				else:
+					body += f"\n{text}"
+
+
+		results.append({
+            		"page": page_num + 1,
+			"text": body,
+            		"removed": "\n".join(removed)
+        		})
+	return results
+
+
+# load the data
+data = text_table_extraction("test2.pdf")
+
+# fill text variable
+text = ""
+for d in data:
+	text += d["text"]
+
+# divide the paper into sections
+headings = ["abstract", "introduction", "methodology", "results and discussion", "conclusion", "references"]
+paragraphs = []
+
+# heading extraction
+def extract_name(t, c, paragraph):
+
+	name = headings[c]
+
+	for index in range(len(t)-len(name)):
+		buffer = t[index: len(name)+index]
+		if name == buffer.lower():
+			paragraphs.append(paragraph)
+			t = t[index+len(name):]
+
+			if c+1 < len(headings):
+				extract_name(t, c+1, name)
+			else:
+				paragraphs.append(name + t)
+			break
+		else:
+			paragraph += t[index]
+	return
+
+extract_name(text, 0, "")
+
+# list -> Document
+# each document object from langchain_core.documents.Document contains content and metadata
+# metadata here will contains parent_id if child and none if parent
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+
+def parent_child_chunking():
+	child_splitter = RecursiveCharacterTextSplitter(
+		chunk_size=800,
+		chunk_overlap=120,
+		separators=["\n\n", "\n", ". ", " ", ""]
+	)
+
+	parents = {}
+	children = []
+	for i, t in enumerate(paragraphs):
+		parents[i] = t
+
+		child_chunks = child_splitter.split_text(t)
+		for text in child_chunks:
+			child_doc = Document(page_content=text, metadata={"parent": str(i)})
+			children.append(child_doc)
+
+	return parents, children
+
+
+parent, child = parent_child_chunking()
+
+for p in parent:
+	print(p)
+	print(parent[p])
+
+print('\n\n')
+
+for c in child:
+	print(c, end='\n\n')
