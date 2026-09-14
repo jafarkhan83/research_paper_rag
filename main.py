@@ -1,16 +1,29 @@
 from parser import initializer
 from chunking import parent_child_chunking
+from utilities import serialize_object
+from ingest import create_embeddings
+from retriever import retriever_interface
+from langchain_huggingface import HuggingFaceEmbeddings
+import os
 
-sections = initializer("papers/paper.pdf")
-# parent, child = parent_child_chunking(sections)
+model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-for section in sections:
-    print(section, end='\n\n')
+def initialize(file_path):
+    sections = initializer(file_path)
+    parent, children = parent_child_chunking(sections)
 
-# for p in parent:
-#     print(p)
+    if os.path.exists("pkl/children.pkl"):
+        os.remove("pkl/children.pkl")
 
-# print('\n\n')
+    serialize_object(children, "pkl/children.pkl")
+    create_embeddings(children, model)
 
-# for c in child:
-#     print(c)
+    print("Embeddings created, saved to pkl/children.pkl")
+
+def retrieve(query, k):
+    return retriever_interface(model, query, k=k)
+
+chunks = retrieve("semantic parent sections", k=3)
+
+for c in chunks:
+    print(c, end='\n\n')

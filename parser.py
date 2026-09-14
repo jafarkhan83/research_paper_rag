@@ -129,7 +129,7 @@ def extract_sections(pages):
 					sections.append(p)
 				p = {
 					"page": page["page"],
-					"text": "",
+					"text": name + " ",
 					"section": name
 				}
 				c += 1
