@@ -147,13 +147,4 @@ def extract_sections(pages):
 def initializer(file_path):
 	# load the data
     data = text_table_extraction(file_path)
-
-    # fill text variable
-    text = ""
-    for d in data:
-        text += d["text"]
-
-    # extract_name(text, 0, "")
-
-    # return paragraphs
     return extract_sections(data)
