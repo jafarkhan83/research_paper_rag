@@ -1,0 +1,7 @@
+.env
+chroma_db/
+papers/test.pdf
+papers/test_01.pdf
+pkl/
+__pycache__/
+test.py

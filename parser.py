@@ -82,7 +82,7 @@ def text_table_extraction(pdf_path, header_pct=0.10, footer_pct=0.10):
 	return results
 
 # divide the paper into sections
-headings = ["abstract", "introduction", "methodology", "results and discussion", "conclusion", "references"]
+headings = ["abstract", "introduction", "problem statement", "objectives", "methodology", "results and discussion", "conclusion", "references"]
 paragraphs = []
 
 # heading extraction recursive

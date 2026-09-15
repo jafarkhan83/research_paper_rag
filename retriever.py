@@ -1,6 +1,7 @@
 from langchain_chroma import Chroma
 from langchain_community.retrievers import BM25Retriever
-from utilities import deserialize_object
+import cohere
+import os
 
 def dense_retriever(model, query, k):
     vector_store = Chroma (
@@ -10,8 +11,7 @@ def dense_retriever(model, query, k):
 
     return vector_store.similarity_search(query, k=k)
 
-def sparse_retriever(query, k):
-    docs = deserialize_object("pkl/children.pkl")
+def sparse_retriever(query, k, docs):
     retriever = BM25Retriever.from_documents(docs)
     retriever.k = k
     return retriever.invoke(query)
@@ -39,7 +39,22 @@ def rrf_fusion(dense_results, sparse_results, k=60):
 
     return [documents[doc_id] for doc_id in ranked_ids]
 
-def retriever_interface(model, query, k):
+def reranker(query, results, r):
+    docs = [doc.page_content for doc in results]
+    api_key = os.getenv("COHERE_API_KEY")
+    co = cohere.ClientV2(api_key=api_key)
+    response = co.rerank(
+        model='rerank-v4.0-pro',
+        query=query,
+        documents=docs,
+        top_n=r
+    )
+    return [results[result.index] for result in response.results]
+
+def retriever_interface(model, query, k, r, children):
+    if k < 2 or r < 2 or r > k:
+        raise ValueError("k must be at least 2, and r must be at least 2 and at most k")
     dense_results = dense_retriever(model, query, k)
-    sparse_results = sparse_retriever(query, k)
-    return rrf_fusion(dense_results, sparse_results)
+    sparse_results = sparse_retriever(query, k, children)
+    fused_results = rrf_fusion(dense_results, sparse_results)
+    return reranker(query, fused_results, r)

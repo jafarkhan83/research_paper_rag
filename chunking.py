@@ -17,7 +17,13 @@ def parent_child_chunking(sections):
 
 		child_chunks = child_splitter.split_text(text)
 		for j, text in enumerate(child_chunks):
-			child_doc = Document(page_content=text, metadata={"parent": i, "position": j, "page": section['page'], "id": counter})
+			metadata = {"parent": i,
+				"position": j,
+				"page": section['page'],
+				"id": counter,
+				"section": section["section"]
+				}
+			child_doc = Document(page_content=text, metadata=metadata)
 			counter += 1
 			children.append(child_doc)
 
