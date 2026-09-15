@@ -117,7 +117,7 @@ def extract_sections(pages):
 			"text": "",
 			"section": ""
 		}
-		if c != 0: p['section'] = name
+		if c != 0: p['section'] = sections[-1]['section']
 		text = page['text']
 		index = 0
 
