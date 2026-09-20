@@ -1,14 +1,27 @@
 from parser import initializer
 from chunking import parent_child_chunking
-from utilities import serialize_object, find_neighbors, deserialize_object
+from utilities import serialize_object, find_neighbors, deserialize_object, query_rewriting
 from ingest import create_embeddings
 from retriever import retriever_interface
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 import os
 
-model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 load_dotenv()
+
+model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+q_groq = ChatGroq(
+    model="openai/gpt-oss-safeguard-20b",
+    temperature=0,
+    reasoning_effort="low"
+)
+
+a_groq = ChatGroq(
+    model="openai/gpt-oss-safeguard-20b",
+    temperature=0,
+    reasoning_effort="medium"
+)
 
 def initialize(file_path):
     sections = initializer(file_path)
@@ -24,8 +37,9 @@ def initialize(file_path):
 
 def retrieve(query, k, r, s):
     children = deserialize_object("pkl/children.pkl")
+    r_query = query_rewriting(query, model=q_groq)
     try:
-        chunks = retriever_interface(model, query, k=k, r=r, children=children)
+        chunks = retriever_interface(model, r_query.content, k=k, r=r, children=children)
         top_chunk = chunks[0]
         return find_neighbors(top_chunk, s, children)
     except Exception as e:
@@ -33,7 +47,7 @@ def retrieve(query, k, r, s):
         return None
 
 # initialize("papers/test_01.pdf")
-query = "Why can retrieving the entire parent section be less effective than retrieving a relevant child chunk with neighboring children, and what trade-off does increasing the number of neighboring chunks introduce?"
+query = "tell me about conclusion of this research paper."
 chunks = retrieve(query=query, k=2, r=2, s=3)
 
 for c in chunks:

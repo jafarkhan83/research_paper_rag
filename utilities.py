@@ -1,3 +1,4 @@
+from langchain_core.prompts import ChatPromptTemplate
 import pickle
 
 def get_siblings(section, parent_id, children):
@@ -35,3 +36,15 @@ def serialize_object(obj, file_path):
 def deserialize_object(file_path):
     with open(file_path, 'rb') as f:
         return pickle.load(f)
+
+def query_rewriting(query, model):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are query rewriting component in RAG system.\nRewrite the user question into a concise search query optimized retrieving relevant documents.\nRules:\n - Preserve the user's intent.\n - Keep important entities, dates, products, and terminology.\n - Remove conversational filler.\n - Do not answer question.\n - Return ONLY the rewritten query."),
+        ("human", "{query}")
+    ])
+    rewriter = prompt | model
+    try:
+        response = rewriter.invoke({"query": query})
+    except Exception as e:
+        raise e
+    return response
