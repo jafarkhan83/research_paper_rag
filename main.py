@@ -1,6 +1,6 @@
 from parser import initializer
 from chunking import parent_child_chunking
-from utilities import serialize_object, find_neighbors, deserialize_object, query_rewriting
+from utilities import serialize_object, find_neighbors, deserialize_object, query_rewriting, final_response
 from ingest import create_embeddings
 from retriever import retriever_interface
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -37,9 +37,8 @@ def initialize(file_path):
 
 def retrieve(query, k, r, s):
     children = deserialize_object("pkl/children.pkl")
-    r_query = query_rewriting(query, model=q_groq)
     try:
-        chunks = retriever_interface(model, r_query.content, k=k, r=r, children=children)
+        chunks = retriever_interface(model, query, k=k, r=r, children=children)
         top_chunk = chunks[0]
         return find_neighbors(top_chunk, s, children)
     except Exception as e:
@@ -48,7 +47,9 @@ def retrieve(query, k, r, s):
 
 # initialize("papers/test_01.pdf")
 query = "tell me about conclusion of this research paper."
-chunks = retrieve(query=query, k=2, r=2, s=3)
+r_query = query_rewriting(query, model=q_groq).content
+chunks = retrieve(query=r_query, k=2, r=2, s=3)
 
-for c in chunks:
-    print(c, end='\n\n')
+response = final_response(query, chunks, a_groq)
+
+print(response.content)

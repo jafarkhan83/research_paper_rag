@@ -48,3 +48,15 @@ def query_rewriting(query, model):
     except Exception as e:
         raise e
     return response
+
+def final_response(query, docs, model):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "Answer the user's questions based on the provided documents: {docs}\nIf the answer cannot be found in the documents, say 'I don't have the information available.'"),
+        ("human", "{query}")
+    ])
+    responder = prompt | model
+    try:
+        response = responder.invoke({"query": query, "docs": docs})
+    except Exception as e:
+        raise e
+    return response
