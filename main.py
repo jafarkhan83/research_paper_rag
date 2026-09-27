@@ -30,10 +30,14 @@ def initialize(file_path):
     if os.path.exists("pkl/children.pkl"):
         os.remove("pkl/children.pkl")
 
+    if os.path.exists("pkl/parent.pkl"):
+        os.remove("pkl/parent.pkl")
+
     serialize_object(children, "pkl/children.pkl")
+    serialize_object(parent, "pkl/parent.pkl")
     create_embeddings(children, model)
 
-    print("Embeddings created, saved to pkl/children.pkl")
+    print("Embeddings created")
 
 def retrieve(query, k, r, s):
     children = deserialize_object("pkl/children.pkl")
