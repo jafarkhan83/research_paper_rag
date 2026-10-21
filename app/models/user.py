@@ -1,6 +1,6 @@
-from sqlalchemy import String
+from sqlalchemy import String, select
 from sqlalchemy.orm import Mapped, mapped_column
-from dependencies.database import Base
+from dependencies.database import Base, SessionLocal
 
 class User(Base):
     __tablename__ = "users"
@@ -24,3 +24,8 @@ class User(Base):
         String(255),
         nullable=False
     )
+
+def get_user_by_id(user_id: int):
+    with SessionLocal() as db:
+        statement = select(User).where(User.id == user_id)
+        return db.scalar(statement)

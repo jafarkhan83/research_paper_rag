@@ -1,5 +1,6 @@
 from schemas.user import UserQuery, UserResponse
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from dependencies.auth import get_current_user
 
 router = APIRouter()
 
@@ -8,6 +9,7 @@ def hello():
     return {"message": "Hello, World!"}
 
 @router.post('/chat')
-def chat(body: UserQuery):
-    response = UserResponse(response="Hello, World!")
+def chat(body: UserQuery, current_user=Depends(get_current_user)):
+    query = body.query
+    response = UserResponse(response=f"Hello, {current_user.name}! You said: {query}")
     return response

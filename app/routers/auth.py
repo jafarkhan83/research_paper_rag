@@ -5,6 +5,8 @@ from models.user import User
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from dependencies.database import get_db
+from dependencies.auth import get_current_user
+from core.security import hash_password, verify_password, generate_access_token
 
 router = APIRouter()
 
@@ -13,7 +15,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     user = User()
     user.name = body.name
     user.email = body.email
-    user.password = body.password
+    user.password = hash_password(body.password)
 
     try:
         db.add(user)
@@ -40,17 +42,12 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
-    # password need to be hashed first then compare
 
-    if not user:
+    if not user or not verify_password(body.password, user.password):
         return JSONResponse(
             status_code=404,
             content= {"response": "invalid email, password pair"}
         )
 
-    token = TokenResponse(response="some_token")
+    token = generate_access_token(user.id)
     return token
-
-@router.post("/logout")
-def logout():
-    return {"response": "Logout successful"}
